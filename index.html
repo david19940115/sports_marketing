@@ -1,0 +1,964 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>王牌經紀人</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&display=swap');
+    
+    body {
+      font-family: 'Noto Sans TC', sans-serif;
+      background-color: #0f172a;
+      background-image: 
+        radial-gradient(at 0% 0%, hsla(28,100%,74%,0.15) 0px, transparent 50%),
+        radial-gradient(at 100% 100%, hsla(210,100%,56%,0.15) 0px, transparent 50%);
+    }
+
+    /* 動畫定義 */
+    @keyframes slideUpFade {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes popIn {
+      0% { opacity: 0; transform: scale(0.9); }
+      50% { transform: scale(1.02); }
+      100% { opacity: 1; transform: scale(1); }
+    }
+    @keyframes shake {
+      0%, 100% { transform: translateX(0); }
+      20%, 60% { transform: translateX(-5px); }
+      40%, 80% { transform: translateX(5px); }
+    }
+    @keyframes fireGlow {
+      0%, 100% { filter: drop-shadow(0 0 5px rgba(239, 68, 68, 0.5)); transform: scale(1); }
+      50% { filter: drop-shadow(0 0 15px rgba(249, 115, 22, 0.8)); transform: scale(1.1); }
+    }
+
+    .animate-slide-up { animation: slideUpFade 0.4s ease-out forwards; }
+    .animate-pop-in { animation: popIn 0.3s ease-out forwards; }
+    .animate-shake { animation: shake 0.4s ease-in-out; }
+    .combo-fire { animation: fireGlow 1.5s infinite ease-in-out; color: #f97316; }
+
+    /* 隱藏滾動條 */
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+    /* 毛玻璃卡片 */
+    .glass-card {
+      background: rgba(30, 41, 59, 0.7);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    .glass-button {
+      background: rgba(255, 255, 255, 0.05);
+      backdrop-filter: blur(4px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      transition: all 0.3s ease;
+    }
+    .glass-button:active {
+      transform: scale(0.98);
+    }
+    
+    /* Q版大頭繪製樣式 */
+    .q-avatar {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 2.5rem;
+      text-shadow: 0 4px 10px rgba(0,0,0,0.5);
+    }
+  </style>
+</head>
+<body class="text-white h-[100dvh] flex flex-col items-center justify-center p-2 sm:p-4 overflow-hidden">
+
+  <div id="game-container" class="w-full max-w-md glass-card rounded-3xl sm:rounded-[2rem] shadow-2xl overflow-hidden flex flex-col h-full max-h-[850px] relative ring-1 ring-white/10">
+    
+    <!-- 頂部時間進度條 (遊戲中才顯示) -->
+    <div id="progress-bar-container" class="w-full h-1.5 bg-slate-800 hidden absolute top-0 left-0 z-20">
+      <div id="progress-bar" class="h-full bg-gradient-to-r from-orange-500 to-yellow-400 w-full transition-all duration-100 ease-linear shadow-[0_0_10px_rgba(249,115,22,0.8)]"></div>
+    </div>
+
+    <!-- 頂部狀態列 -->
+    <div class="p-4 sm:p-5 flex justify-between items-center z-10 border-b border-white/5 bg-slate-900/40 shrink-0">
+      <div class="flex items-center gap-2 font-black tracking-tight text-lg bg-clip-text text-transparent bg-gradient-to-r from-white to-slate-400 cursor-pointer" onclick="showHome()">
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-white"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+        王牌經紀人
+      </div>
+      <div class="flex items-center gap-3">
+        <!-- 音樂開關按鈕 -->
+        <button id="music-toggle" onclick="toggleMusic()" class="text-slate-400 hover:text-white transition-colors p-1 rounded-full hover:bg-white/10" title="播放/暫停音樂">
+          <svg id="icon-music-off" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg>
+        </button>
+        <div id="header-combo" class="hidden items-center gap-1 font-black text-slate-500 transition-colors">
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></svg>
+          <span id="combo-text">0 連擊</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ================= 畫面 0：初始大廳 (4大區塊) ================= -->
+    <div id="screen-home" class="flex-1 flex flex-col p-4 sm:p-5 overflow-y-auto no-scrollbar animate-slide-up z-10 relative">
+      <div class="absolute inset-0 bg-gradient-to-b from-blue-500/10 to-transparent pointer-events-none"></div>
+      
+      <div class="text-center mb-5 mt-2 relative z-10 shrink-0">
+        <h1 class="text-2xl font-black mb-1 tracking-tight text-white">經紀人特訓大廳</h1>
+        <p class="text-slate-400 text-xs">掌握市場籌碼，成為頂尖運動行銷專家</p>
+      </div>
+
+      <div class="flex flex-col gap-3 flex-1 z-10 pb-4">
+        <button onclick="showStars()" class="glass-button w-full p-4 rounded-3xl flex items-center gap-4 hover:bg-white/10 group text-left relative overflow-hidden">
+          <div class="absolute right-0 top-0 w-24 h-24 bg-yellow-500/10 rounded-full blur-2xl group-hover:bg-yellow-500/20"></div>
+          <div class="w-12 h-12 rounded-2xl bg-gradient-to-br from-yellow-400 to-orange-500 flex items-center justify-center shadow-lg shrink-0">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-white"><path d="M12 2v20"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+          </div>
+          <div class="flex-1">
+            <h3 class="text-lg font-bold text-yellow-400 mb-1">影響力 6 大球星</h3>
+            <p class="text-[11px] text-slate-400 leading-relaxed">LeBron, KD, Curry 等球星的商業價值與代言版圖</p>
+          </div>
+        </button>
+
+        <button onclick="showBrands()" class="glass-button w-full p-4 rounded-3xl flex items-center gap-4 hover:bg-white/10 group text-left relative overflow-hidden">
+          <div class="absolute right-0 top-0 w-24 h-24 bg-blue-500/10 rounded-full blur-2xl group-hover:bg-blue-500/20"></div>
+          <div class="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-400 to-cyan-500 flex items-center justify-center shadow-lg shrink-0">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-white"><path d="M2 20a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V8l-7 5V8l-7 5V4a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2Z"/></svg>
+          </div>
+          <div class="flex-1">
+            <h3 class="text-lg font-bold text-cyan-400 mb-1">市場 3 大品牌</h3>
+            <p class="text-[11px] text-slate-400 leading-relaxed">Nike、Adidas、Jordan 三大巨頭如何主宰球鞋市場</p>
+          </div>
+        </button>
+
+        <button onclick="showMarketing()" class="glass-button w-full p-4 rounded-3xl flex items-center gap-4 hover:bg-white/10 group text-left relative overflow-hidden">
+          <div class="absolute right-0 top-0 w-24 h-24 bg-purple-500/10 rounded-full blur-2xl group-hover:bg-purple-500/20"></div>
+          <div class="w-12 h-12 rounded-2xl bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center shadow-lg shrink-0">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-white"><path d="m3 21 1.9-5.7a8.5 8.5 0 1 1 3.8 3.8z"/></svg>
+          </div>
+          <div class="flex-1">
+            <h3 class="text-lg font-bold text-purple-300 mb-1">認識運動行銷</h3>
+            <p class="text-[11px] text-slate-400 leading-relaxed">夢想家案例、打造個人品牌與理財觀念</p>
+          </div>
+        </button>
+
+        <button onclick="showGameStart()" class="glass-button w-full p-4 rounded-3xl flex items-center gap-4 hover:bg-white/10 group text-left mt-1 border-emerald-500/40 relative overflow-hidden">
+          <div class="absolute right-0 top-0 w-24 h-24 bg-emerald-500/10 rounded-full blur-2xl group-hover:bg-emerald-500/20"></div>
+          <div class="w-12 h-12 rounded-2xl bg-gradient-to-br from-emerald-400 to-green-600 flex items-center justify-center shadow-lg shrink-0">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-white"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+          </div>
+          <div class="flex-1">
+            <h3 class="text-lg font-black text-emerald-400 mb-1">實戰：經紀人挑戰賽</h3>
+            <p class="text-[11px] text-slate-400 leading-relaxed">驗收成果！限時 60 秒挑戰，賺取百萬獎金</p>
+          </div>
+        </button>
+      </div>
+
+      <!-- 初始頁底部文字 -->
+      <div class="text-center mt-auto pt-2 z-10 shrink-0">
+        <p class="text-[11px] text-slate-500/80 font-bold tracking-widest">大衛老師的理財教育融入運動行銷課</p>
+      </div>
+
+    </div>
+
+    <!-- ================= 畫面：6大球星列表 ================= -->
+    <div id="screen-stars" class="hidden flex-1 flex flex-col p-4 sm:p-6 overflow-y-auto no-scrollbar animate-slide-up z-10 relative">
+      <button onclick="showHome()" class="mb-4 flex items-center gap-2 text-slate-400 hover:text-white transition-colors self-start bg-white/5 px-4 py-2 rounded-full text-sm font-bold shrink-0">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+        返回大廳
+      </button>
+      <h2 class="text-2xl font-black mb-1 text-yellow-400 shrink-0">影響力 6 大球星</h2>
+      <p class="text-xs text-slate-400 mb-6 shrink-0">點擊球星，了解他們的成長故事與專屬絕技。</p>
+      
+      <div id="stars-list" class="flex flex-col gap-3 pb-6"></div>
+    </div>
+
+    <!-- ================= 畫面：單一球星詳細介紹 ================= -->
+    <div id="screen-star-detail" class="hidden flex-1 flex flex-col p-4 sm:p-6 overflow-y-auto no-scrollbar animate-slide-up z-10 relative">
+      <button onclick="showStars()" class="mb-4 flex items-center gap-2 text-slate-400 hover:text-white transition-colors self-start bg-white/5 px-4 py-2 rounded-full text-sm font-bold shrink-0">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+        返回名單
+      </button>
+      <div id="star-detail-content" class="flex flex-col gap-4 pb-6"></div>
+    </div>
+
+    <!-- ================= 畫面：3大品牌列表 ================= -->
+    <div id="screen-brands" class="hidden flex-1 flex flex-col p-4 sm:p-6 overflow-y-auto no-scrollbar animate-slide-up z-10 relative">
+      <button onclick="showHome()" class="mb-4 flex items-center gap-2 text-slate-400 hover:text-white transition-colors self-start bg-white/5 px-4 py-2 rounded-full text-sm font-bold shrink-0">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+        返回大廳
+      </button>
+      <h2 class="text-2xl font-black mb-1 text-cyan-400 shrink-0">市場 3 大品牌</h2>
+      <p class="text-xs text-slate-400 mb-6 shrink-0">點擊品牌，探索創立故事與市場財報概況。</p>
+      
+      <div id="brands-list" class="flex flex-col gap-4 pb-6"></div>
+    </div>
+
+    <!-- ================= 畫面：單一品牌詳細介紹 ================= -->
+    <div id="screen-brand-detail" class="hidden flex-1 flex flex-col p-4 sm:p-6 overflow-y-auto no-scrollbar animate-slide-up z-10 relative">
+      <button onclick="showBrands()" class="mb-4 flex items-center gap-2 text-slate-400 hover:text-white transition-colors self-start bg-white/5 px-4 py-2 rounded-full text-sm font-bold shrink-0">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+        返回品牌
+      </button>
+      <div id="brand-detail-content" class="flex flex-col gap-4 pb-6"></div>
+    </div>
+
+    <!-- ================= 畫面：認識運動行銷 ================= -->
+    <div id="screen-marketing" class="hidden flex-1 flex flex-col p-4 sm:p-6 overflow-y-auto no-scrollbar animate-slide-up z-10 relative">
+      <button onclick="showHome()" class="mb-4 flex items-center gap-2 text-slate-400 hover:text-white transition-colors self-start bg-white/5 px-4 py-2 rounded-full text-sm font-bold shrink-0">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+        返回大廳
+      </button>
+      <h2 class="text-2xl font-black mb-1 text-purple-400 shrink-0">認識運動行銷</h2>
+      <p class="text-xs text-slate-400 mb-6 shrink-0">不只是賣鞋，更是經營「價值」與「影響力」。</p>
+
+      <div class="flex flex-col gap-4 pb-6">
+        <div class="glass-card p-5 rounded-3xl border border-white/5 relative overflow-hidden">
+          <h3 class="text-lg font-bold text-white mb-2">什麼是運動行銷？</h3>
+          <p class="text-[13px] text-slate-300 leading-relaxed">
+            品牌透過贊助球員（如提供專屬球鞋），將球員在場上的拼搏精神與形象轉化為產品的故事。球迷因為認同球員，進而購買商品，這就是運動行銷的魔力。
+          </p>
+        </div>
+
+        <div class="glass-card p-5 rounded-3xl border border-white/5 relative overflow-hidden">
+          <h3 class="text-blue-400 font-bold text-sm mb-2 flex items-center gap-2">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+            看職籃學行銷：夢想家案例
+          </h3>
+          <p class="text-[13px] text-slate-300 leading-relaxed">
+            除了球員，球隊也是一個大品牌。看看 TPBL 的🦄福爾摩沙夢想家隊，從 ABL 時期號召球迷穿白色衣服進場營造「我夢主場」、將網路事件轉化為幽默的「<strong class='text-white'>李德威</strong>發便當」行銷，再到近期成功歸化🇹🇼中華隊禁區大將<strong class='text-white'> Brandon Gilbeck 高柏鎧</strong>，他們總是不斷創造新聞點與話題，成功黏住球迷的心！
+          </p>
+        </div>
+
+        <div class="glass-card p-5 rounded-3xl border-l-4 border-l-orange-500 relative overflow-hidden">
+          <h3 class="text-orange-400 font-bold text-sm mb-2 flex items-center gap-2">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+            打造個人品牌
+          </h3>
+          <p class="text-[13px] text-slate-300 leading-relaxed">
+            對國中、國小的你們來說，現在就可以開始經營「個人品牌」。看看剛從👑新北國王隊退役的<strong class="text-white">林力仁</strong>，因為他早早就在球員時期積極經營自媒體與個人聲量，現在才能無縫接軌當 YouTuber 和專業球評！
+          </p>
+        </div>
+
+        <div class="glass-card p-5 rounded-3xl border border-emerald-500/30 bg-emerald-900/10 relative overflow-hidden">
+          <h3 class="text-emerald-400 font-bold text-sm mb-2 flex items-center gap-2">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+            財商思維：跟著市場一起成長
+          </h3>
+          <p class="text-[13px] text-slate-300 leading-relaxed mb-3">
+            當各大運動品牌持續賺錢，它們的母公司股價就會成長。打球要看全場，理財也要有大格局。
+          </p>
+          <p class="text-[13px] text-slate-400 leading-relaxed border-t border-white/10 pt-3">
+            與其只買鞋，不如透過投資類大盤標的，如美股 <strong>VOO</strong> 或是台股 <strong>0050</strong>，善用市場與時間的力量，享受這些企業成長帶來的長線紅利。
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ================= 畫面：遊戲準備畫面 ================= -->
+    <div id="screen-start" class="hidden flex-1 flex flex-col items-center justify-center text-center p-6 sm:p-8 animate-slide-up relative z-10">
+      <button onclick="showHome()" class="absolute top-4 left-4 flex items-center gap-2 text-slate-400 hover:text-white transition-colors bg-white/5 px-4 py-2 rounded-full text-sm font-bold z-20">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+        返回
+      </button>
+
+      <div class="absolute inset-0 bg-gradient-to-b from-orange-500/10 to-transparent pointer-events-none"></div>
+      
+      <div class="w-24 h-24 glass-card rounded-full flex items-center justify-center mb-6 border-2 border-orange-500/50 shadow-[0_0_40px_rgba(249,115,22,0.2)] relative mt-8">
+        <div class="absolute inset-0 rounded-full border-t-2 border-orange-400 animate-[spin_3s_linear_infinite]"></div>
+        <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="text-orange-400"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
+      </div>
+      
+      <h1 class="text-3xl font-black mb-2 tracking-tight">經紀人挑戰賽</h1>
+      <p class="text-orange-400 font-bold mb-6 tracking-widest text-xs uppercase">Marketing Challenge</p>
+      
+      <p class="text-slate-400 mb-8 leading-relaxed text-[13px] bg-slate-900/50 p-4 rounded-2xl border border-white/5">
+        考驗你的市場敏銳度！<br/>
+        連續答對可觸發 <span class="text-orange-400 font-bold">Combo 加成</span><br/>
+        答錯將遭到 <span class="text-red-400 font-bold">扣減 3 秒</span> 懲罰！
+      </p>
+
+      <button onclick="startGame()" class="w-full relative group overflow-hidden rounded-2xl p-[1px]">
+        <span class="absolute inset-0 bg-gradient-to-r from-orange-500 via-yellow-500 to-orange-500 rounded-2xl opacity-70 group-hover:opacity-100 transition-opacity"></span>
+        <div class="relative bg-slate-900/90 backdrop-blur-sm group-hover:bg-slate-900/50 transition-colors w-full py-4 rounded-2xl flex items-center justify-center gap-2">
+          <span class="font-bold text-lg text-white">啟動賽季</span>
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+        </div>
+      </button>
+    </div>
+
+    <!-- ================= 畫面：遊戲進行畫面 ================= -->
+    <div id="screen-playing" class="hidden flex-1 flex flex-col p-4 sm:p-6 animate-slide-up z-10 min-h-0">
+      <div class="mb-3 sm:mb-5 flex justify-between items-end glass-card p-3 sm:p-4 rounded-xl sm:rounded-2xl shrink-0">
+        <div>
+          <p class="text-[10px] text-slate-400 uppercase font-bold tracking-widest mb-1 flex items-center gap-1">
+            總獎金 Budget
+          </p>
+          <div id="score" class="text-2xl font-black text-white tracking-tight">$0</div>
+        </div>
+        <div class="text-right">
+          <div id="floating-score" class="text-sm font-bold text-green-400 opacity-0 transition-opacity">-</div>
+        </div>
+      </div>
+
+      <div class="glass-card p-4 sm:p-6 rounded-2xl sm:rounded-3xl mb-4 sm:mb-6 min-h-[110px] sm:min-h-[130px] flex flex-col justify-center relative overflow-hidden ring-1 ring-white/10 shadow-lg shrink-0">
+        <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-slate-500 to-slate-400" id="question-type-indicator"></div>
+        <span id="question-tag" class="text-xs font-bold px-2 py-1 bg-white/10 rounded-md self-start mb-2 sm:mb-3 text-slate-300">題型</span>
+        <p id="question-text" class="text-base sm:text-lg font-medium leading-relaxed text-white">
+          <!-- 題目在這裡 -->
+        </p>
+      </div>
+
+      <!-- 讓選項往上靠齊題目，並隱藏捲軸 -->
+      <div id="options-container" class="flex flex-col gap-2 sm:gap-3 flex-1 pb-2 overflow-y-auto no-scrollbar min-h-0">
+        <!-- 選項按鈕在這裡 -->
+      </div>
+    </div>
+
+    <!-- ================= 畫面：遊戲結束畫面 ================= -->
+    <div id="screen-gameover" class="hidden flex-1 flex flex-col p-4 sm:p-6 overflow-y-auto no-scrollbar animate-slide-up z-10 relative">
+      <div class="text-center mb-5 mt-2 shrink-0">
+        <div class="w-16 h-16 mx-auto glass-card rounded-full flex items-center justify-center mb-3 ring-2 ring-yellow-400/50 shadow-[0_0_30px_rgba(250,204,21,0.3)]">
+          <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-yellow-400"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg>
+        </div>
+        <h2 class="text-2xl font-black text-white mb-1">賽季結算</h2>
+        <p class="text-slate-400 text-xs">最高連擊：<span id="final-max-combo" class="font-bold text-orange-400">0</span> 次</p>
+        <div id="final-score" class="text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-green-300 to-emerald-500 my-3 drop-shadow-lg">$0</div>
+      </div>
+
+      <div class="glass-card p-4 rounded-2xl mb-4 shadow-lg border-l-4 border-l-orange-500 relative overflow-hidden shrink-0">
+        <h4 class="text-orange-400 font-bold text-[13px] mb-2 flex items-center gap-2">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+          大衛老師的場外提醒
+        </h4>
+        <p class="text-[12px] text-slate-300 leading-relaxed space-y-1 relative z-10">
+          <span class="block text-white font-medium">懂得行銷，也要懂財務放大術。</span>
+          <span class="block">這筆獎金若配置在 <strong>VOO</strong> 或 <strong>0050</strong> 這種類大盤 ETF，透過複利，未來的資產會比麻辣火鍋還驚人。</span>
+          <span class="block mt-2 text-slate-400 italic">
+            * 課本沒有，但也很重要的事！
+          </span>
+        </p>
+      </div>
+
+      <div class="bg-black/30 p-4 rounded-xl border border-white/5 mb-6 shrink-0">
+        <p class="text-[12px] text-slate-300 leading-relaxed font-serif italic">
+          「豈不知在場上賽跑的都跑，但得獎賞的只有一人？你們也當這樣跑，好叫你們得著獎賞。」
+        </p>
+      </div>
+
+      <div class="flex gap-3 mt-auto pb-2 shrink-0">
+        <button onclick="showHome()" class="flex-1 bg-slate-700 hover:bg-slate-600 text-white py-4 rounded-2xl font-bold text-sm transition-all transform active:scale-95 shadow-md">
+          回大廳
+        </button>
+        <button onclick="startGame()" class="flex-[2] bg-white text-slate-900 py-4 rounded-2xl font-black text-lg transition-all transform active:scale-95 shadow-[0_0_20px_rgba(255,255,255,0.2)]">
+          再次挑戰
+        </button>
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    // 遊戲資料庫
+    const playersData = [
+      { name: "Aaron Gordon", team: "丹佛金塊", brand: "361°", shoe: "AG 6", years: 12, shoesCount: 6, stock: null },
+      { name: "Nikola Jokić", team: "丹佛金塊", brand: "361°", shoe: "Joker 2", years: 11, shoesCount: 2, stock: null },
+      { name: "Anthony Edwards", team: "明尼蘇達灰狼", brand: "Adidas", shoe: "AE 2", years: 6, shoesCount: 2, stock: "ADDYY" },
+      { name: "Damian Lillard", team: "波特蘭拓荒者", brand: "Adidas", shoe: "Dame X", years: 14, shoesCount: 10, stock: "ADDYY" },
+      { name: "Donovan Mitchell", team: "克里夫蘭騎士", brand: "Adidas", shoe: "D.O.N. Issue 7", years: 9, shoesCount: 7, stock: "ADDYY" },
+      { name: "James Harden", team: "克里夫蘭騎士", brand: "Adidas", shoe: "Harden Vol. 10", years: 17, shoesCount: 10, stock: "ADDYY" },
+      { name: "Trae Young", team: "華盛頓巫師", brand: "Adidas", shoe: "Trae Young 4", years: 8, shoesCount: 4, stock: "ADDYY" },
+      { name: "Klay Thompson", team: "達拉斯獨行俠", brand: "Anta", shoe: "KT 11", years: 15, shoesCount: 11, stock: "ANPDY" },
+      { name: "Kyrie Irving", team: "達拉斯獨行俠", brand: "Anta", shoe: "ANTA KAI 3", years: 15, shoesCount: 11, stock: "ANPDY" },
+      { name: "Shai Gilgeous-Alexander", team: "奧克拉荷馬雷霆", brand: "Converse", shoe: "SHAI 001", years: 8, shoesCount: 1, stock: "NKE" },
+      { name: "De'Aaron Fox", team: "聖安東尼奧馬刺", brand: "Curry Brand", shoe: "Curry Fox 1", years: 9, shoesCount: 1, stock: null },
+      { name: "Stephen Curry", team: "金州勇士", brand: "Curry Brand", shoe: "Curry 13", years: 17, shoesCount: 13, stock: null }, 
+      { name: "Jayson Tatum", team: "波士頓塞爾提克", brand: "Jordan Brand", shoe: "Tatum 4", years: 9, shoesCount: 4, stock: "NKE" },
+      { name: "Luka Dončić", team: "洛杉磯湖人", brand: "Jordan Brand", shoe: "Luka 5", years: 8, shoesCount: 5, stock: "NKE" },
+      { name: "Russell Westbrook", team: "沙加緬度國王", brand: "Jordan Brand", shoe: "Why Not .6", years: 18, shoesCount: 6, stock: "NKE" },
+      { name: "Zion Williamson", team: "紐奧良鵜鶘", brand: "Jordan Brand", shoe: "Zion 4", years: 7, shoesCount: 4, stock: "NKE" },
+      { name: "CJ McCollum", team: "亞特蘭大老鷹", brand: "Li-Ning", shoe: "CJ 4", years: 13, shoesCount: 4, stock: "LNNGY" },
+      { name: "Jimmy Butler", team: "金州勇士", brand: "Li-Ning", shoe: "JB 4", years: 15, shoesCount: 4, stock: "LNNGY" },
+      { name: "Kawhi Leonard", team: "洛杉磯快艇", brand: "New Balance", shoe: "Kawhi 4", years: 15, shoesCount: 4, stock: null },
+      { name: "Devin Booker", team: "鳳凰城太陽", brand: "Nike", shoe: "Book 2", years: 11, shoesCount: 2, stock: "NKE" },
+      { name: "Giannis Antetokounmpo", team: "密爾瓦基公鹿", brand: "Nike", shoe: "Zoom Freak 7", years: 13, shoesCount: 7, stock: "NKE" },
+      { name: "Ja Morant", team: "曼菲斯灰熊", brand: "Nike", shoe: "Ja 3", years: 7, shoesCount: 3, stock: "NKE" },
+      { name: "Kevin Durant", team: "休士頓火箭", brand: "Nike", shoe: "KD 18", years: 19, shoesCount: 18, stock: "NKE" },
+      { name: "LeBron James", team: "洛杉磯湖人", brand: "Nike", shoe: "LeBron 23", years: 23, shoesCount: 23, stock: "NKE" },
+      { name: "Paul George", team: "費城76人", brand: "Nike", shoe: "PG 6", years: 16, shoesCount: 6, stock: "NKE" },
+      { name: "Andrew Wiggins", team: "金州勇士", brand: "Peak", shoe: "AW 3", years: 12, shoesCount: 3, stock: null },
+      { name: "LaMelo Ball", team: "夏洛特黃蜂", brand: "Puma", shoe: "MB.05", years: 6, shoesCount: 5, stock: "PUMSY" },
+      { name: "Scoot Henderson", team: "波特蘭拓荒者", brand: "Puma", shoe: "Scoot Zeros 2", years: 3, shoesCount: 2, stock: "PUMSY" },
+      { name: "Austin Reaves", team: "洛杉磯湖人", brand: "Rigorer", shoe: "AR 2", years: 5, shoesCount: 2, stock: null },
+      { name: "Joel Embiid", team: "費城76人", brand: "Skechers", shoe: "SKX JE1", years: 12, shoesCount: 2, stock: "SKX" }
+    ];
+
+    // 詳細球星故事與技能 (對應 6 大球星)
+    const starsDetailedData = {
+      "LeBron James": {
+        emoji: "👑", bg: "from-purple-600 to-yellow-500",
+        story: "出生於俄亥俄州阿克倫，他能在長達二十多年的高強度職業生涯中始終屹立不搖，並登頂 NBA 歷史得分王，憑藉的絕非僅是天賦。褪去『天選之子』的光環，這背後是數十年如一日的極度自律；從嚴格精算每一餐的飲食控制，到每年投入鉅資的身體保養，他用超乎常人的堅持與節制，立下了職業球員自我管理的最高標竿。",
+        skills: "坦克切入、追魂鍋 (Chase-down Block)、頂級球場視野。"
+      },
+      "Kevin Durant": {
+        emoji: "⌨️", bg: "from-blue-600 to-orange-500",
+        story: "從小在馬里蘭州刻苦練球，歷經西雅圖超音速到奧克拉荷馬雷霆的蛻變。即使遭遇嚴重的阿基里斯腱斷裂，依然強勢回歸，現在前往休士頓火箭隊開啟新篇章。私底下更是著名的「鍵盤俠」，資訊科技課應該有認真上課！",
+        skills: "無死角旱地拔蔥跳投、大幅度 Crossover、極高出手點。"
+      },
+      "Russell Westbrook": {
+        emoji: "⚡", bg: "from-blue-700 to-yellow-400",
+        story: "憑藉驚人的爆發力與永遠滿檔的拼勁，從不被看好到成為 NBA 歷史大三元之王。他將狂野的球風與個人時尚品味結合，現在在沙加緬度國王隊繼續展現他的老將價值與熱情。",
+        skills: "核彈級轉換快攻、暴力灌籃、控衛頂級籃板能力。"
+      },
+      "Stephen Curry": {
+        emoji: "💦", bg: "from-blue-500 to-yellow-300",
+        story: "早期因腳踝傷勢飽受質疑，但他用革命性的三分球徹底改變了現代籃球的打法。他不僅為勇士隊建立王朝，更讓自己成為最具影響力的金雞母，並在近期帶領 Curry Brand 正式走向完全獨立於 Under Armour 外的品牌之路。",
+        skills: "Logoshot 射程、無球跑動、極速出手與節奏變化。"
+      },
+      "James Harden": {
+        emoji: "🧔🏾‍♂️", bg: "from-red-600 to-slate-800",
+        story: "從雷霆隊的最佳第六人，到火箭隊徹底釋放天賦成為 MVP。Harden 用獨特的節奏與打法定義了現代雙能衛，也是 Adidas 籃球鞋陣營多年來的絕對頭牌球星。",
+        skills: "後撤步三分球 (Step-back 3)、歐洲步切入、頂級擋拆火侯。"
+      },
+      "Paul George": {
+        emoji: "🛡️", bg: "from-blue-600 to-red-500",
+        story: "經歷過駭人的斷腿重傷，卻奇蹟般重生並進化成聯盟最頂尖的攻防一體側翼。球風優雅流暢，現在加盟<strong class='text-blue-400'>費城76人隊</strong>，準備為總冠軍發起最後的衝擊。他的 PG 系列球鞋一直是實戰黨的最愛。<strong class='text-blue-400'>Let's Go Sixers!</strong>",
+        skills: "絲滑單打腳步、頂尖外圍大鎖防守、無死角投射。"
+      }
+    };
+
+    // 詳細品牌故事、商業策略與財報
+    const brandsDetailedData = {
+      "Nike": {
+        logo: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="white" class="w-16 h-16"><path d="M22.09 3.75c-1.28.32-8.31 3.53-12.72 7.82C6.18 14.67 4.29 17.5 4.3 19.5c.01 1.7 1.05 2.62 2.62 2.62 2.45 0 6.01-1.99 9.38-5.36 4.3-4.3 6.05-11.45 6.05-11.45l-.26-1.56zM6.92 18.15c-.9 0-1.42-.51-1.42-1.38 0-1.28 1.48-3.52 3.8-5.83 3.12-3.11 7.8-5.65 9.77-6.52-2.12 3.23-5.26 7.42-8.91 11.07-1.87 1.87-3.66 2.66-4.24 2.66z"/></svg>`,
+        bg: "from-slate-800 to-slate-600",
+        story: "1964 年由 Phil Knight 和 Bill Bowerman 創立，起初只是在汽車後車廂賣日本運動鞋。1984 年簽下 Michael Jordan 後徹底改變了體育商業史。如今擁有 LeBron, KD, 字母哥 等超級陣容，是運動行銷的絕對霸主。",
+        strategy: "主打「<strong class='text-purple-300'>尖端科技融入球鞋</strong>」與「<strong class='text-purple-300'>極致運動員故事</strong>」，透過不斷研發獨家氣墊與嶄新緩震材質（如 ZoomX 等），結合球星個人的英雄歷程，鞏固在專業運動領域不可撼動的地位。",
+        finance: "美股代號：NKE。最新市值約為 650 億美元，近期成交價約在 $40 - $50 區間震盪。身為體育板塊龍頭，Nike 集團年營收穩定在 460 億美元上下，掌握著全球近半的籃球鞋市場份額。"
+      },
+      "Adidas": {
+        logo: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="white" class="w-16 h-16"><path d="M19.16 11.23l-3.83-6.61c-.32-.55-1.04-.74-1.6-.41-.55.32-.74 1.04-.41 1.6l3.83 6.61c.32.55 1.04.74 1.6.41.56-.32.74-1.04.41-1.6zm-5.75 3.32l-5.74-9.92c-.32-.55-1.04-.74-1.6-.41-.55.32-.74 1.04-.41 1.6l5.74 9.92c.32.55 1.04.74 1.6.41.56-.32.74-1.04.41-1.6zm-5.74 3.31L3.84 10.95c-.32-.55-1.04-.74-1.6-.41-.55.32-.74 1.04-.41 1.6l3.83 6.61c.32.55 1.04.74 1.6.41.55-.32.74-1.04.41-1.6z"/></svg>`,
+        bg: "from-blue-800 to-cyan-700",
+        story: "來自德國的體育巨擘，由 Adolf Dassler 創立。除了在足球與田徑擁有深厚歷史，在籃球領域也曾簽下<strong class='text-white'> Jeremy Lin 林書豪</strong>與 T-Mac。現今由 James Harden, Damian Lillard 及新星 Anthony Edwards 撐起籃球大旗。",
+        strategy: "主打「<strong class='text-purple-300'>跨圈文化與藝人合作</strong>」，積極與頂流明星、設計師跨界聯名，在台灣也常與<strong class='text-white'>坤達、高爾宣、蔡依林</strong>等藝人合作，將籃球鞋推向街頭穿搭與時尚尖端。順帶一提，你們的😎<strong class='text-white'>大衛老師</strong>也曾是 Adidas 的贊助選手喔！",
+        finance: "美股代號：ADDYY。最新市值約為 280 億美元，近期成交價約在 $70 - $80 區間。挺過了先前的陣痛期後，品牌透過重塑 Samba 等復古鞋款與大受好評的 AE 籃球鞋系列，營收穩步回升，展現強大韌性。"
+      },
+      "Jordan": {
+        logo: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="white" class="w-16 h-16"><path d="M12.63 2.54c-.65 0-1.18.53-1.18 1.18 0 .65.53 1.18 1.18 1.18.65 0 1.18-.53 1.18-1.18 0-.65-.53-1.18-1.18-1.18zm-2.03 5.48c-.68 0-2.3.94-3.52 1.61l-.64 3.01.88.54.49-2.06c.64-.38 1.76-1.12 2.37-1.12.37 0 .56.12.75.56l2.12 5.09-2.85 5.59 1.15.65 2.5-5.26 1.48.51v4.32h1.34v-5.06l-1.69-1.29 1.57-3.99c.77.6 2.05 1.69 2.79 1.69.75 0 1.34-.11 1.34-1.14 0-.8-.32-.93-1.12-1.57-1.04-.84-2.19-2.31-2.19-2.31l-.9-2.58c-.37-.82-.76-1.39-1.42-1.63-.58-.2-2.13-.57-4.47-1.55z"/></svg>`,
+        bg: "from-red-700 to-black",
+        story: "1984 年從 Nike 旗下的一雙紅黑配色球鞋起家，罰球線灌籃、The Move、The Last Shot 被刻意無限循環播放，如今已從簽名鞋系列獨立成為「Jordan Brand」，不僅是籃球實戰裝備，更是潮流與街頭文化的最高指標。",
+        strategy: "主打「<strong class='text-purple-300'>稀缺性與傳奇情懷</strong>」，嚴格控管經典復刻鞋款的發行量，並透過與頂級精品（如 Dior）聯名炒熱話題，成功將籃球文化昇華為奢侈品級別的街頭信仰。",
+        finance: "母公司為 Nike (NKE)，無獨立股票代號。雖然沒有獨立上市，但 Jordan 品牌單獨的年營收已突破 70 億美元大關，旗下擁有 Luka Dončić, Jayson Tatum 等新生代巨星，是推動 Nike 財報成長的最強引擎。"
+      }
+    };
+
+    // DOM 元素定義
+    const screens = {
+      home: document.getElementById('screen-home'),
+      stars: document.getElementById('screen-stars'),
+      starDetail: document.getElementById('screen-star-detail'),
+      brands: document.getElementById('screen-brands'),
+      brandDetail: document.getElementById('screen-brand-detail'),
+      marketing: document.getElementById('screen-marketing'),
+      start: document.getElementById('screen-start'),
+      playing: document.getElementById('screen-playing'),
+      gameover: document.getElementById('screen-gameover')
+    };
+    
+    // UI 切換系統
+    function hideAllScreens() {
+      Object.values(screens).forEach(screen => {
+        screen.classList.add('hidden');
+        screen.classList.remove('animate-slide-up');
+      });
+    }
+
+    function showScreen(screenElement) {
+      hideAllScreens();
+      void screenElement.offsetWidth; // 觸發重繪以重啟動畫
+      screenElement.classList.add('animate-slide-up');
+      screenElement.classList.remove('hidden');
+    }
+
+    // 各大區塊導覽邏輯
+    function showHome() {
+      clearInterval(timerInterval);
+      document.getElementById('progress-bar-container').classList.add('hidden');
+      document.getElementById('header-combo').classList.add('hidden');
+      switchMusic('happy');
+      showScreen(screens.home);
+    }
+    
+    function showStars() { showScreen(screens.stars); }
+    function showBrands() { showScreen(screens.brands); }
+    function showMarketing() { showScreen(screens.marketing); }
+    function showGameStart() { showScreen(screens.start); }
+
+    // 顯示球星詳細內容
+    function showStarDetail(starName) {
+      const data = starsDetailedData[starName];
+      const player = playersData.find(p => p.name === starName);
+      
+      const contentEl = document.getElementById('star-detail-content');
+      contentEl.innerHTML = `
+        <div class="glass-card rounded-3xl overflow-hidden relative border border-white/10 shadow-xl">
+          <div class="h-32 bg-gradient-to-br ${data.bg} flex items-center justify-center relative overflow-hidden">
+            <div class="absolute inset-0 bg-black/20"></div>
+            <div class="q-avatar z-10">${data.emoji}</div>
+          </div>
+          <div class="p-5 sm:p-6 relative">
+            <div class="absolute -top-10 right-4 bg-slate-800 text-white font-black text-xl w-16 h-16 rounded-full flex items-center justify-center border-4 border-slate-900 shadow-lg">
+              ${player.years}<span class="text-[10px] ml-1">年</span>
+            </div>
+            <h3 class="text-2xl font-black text-white mb-1">${starName}</h3>
+            <p class="text-sm font-bold text-slate-400 mb-6">
+              <span class="${player.team === '費城76人' ? 'text-blue-400' : (player.team === '丹佛金塊' ? 'text-orange-400' : '')}">${player.team}</span> 
+              | 專屬鞋: ${player.shoe}
+            </p>
+            
+            <div class="space-y-5">
+              <div>
+                <h4 class="text-orange-400 font-bold text-sm mb-2 flex items-center gap-2">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                  成長與行銷故事
+                </h4>
+                <p class="text-[13px] text-slate-300 leading-relaxed">${data.story}</p>
+              </div>
+              <div>
+                <h4 class="text-emerald-400 font-bold text-sm mb-2 flex items-center gap-2">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/></svg>
+                  招牌籃球技術
+                </h4>
+                <p class="text-[13px] text-slate-300 leading-relaxed">${data.skills}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+      showScreen(screens.starDetail);
+    }
+
+    // 顯示品牌詳細內容
+    function showBrandDetail(brandName) {
+      const data = brandsDetailedData[brandName];
+      
+      const contentEl = document.getElementById('brand-detail-content');
+      contentEl.innerHTML = `
+        <div class="glass-card rounded-3xl overflow-hidden relative border border-white/10 shadow-xl">
+          <div class="h-40 bg-gradient-to-br ${data.bg} flex items-center justify-center relative">
+            <div class="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI4IiBoZWlnaHQ9IjgiPgo8cmVjdCB3aWR0aD0iOCIgaGVpZ2h0PSI4IiBmaWxsPSIjZmZmIiBmaWxsLW9wYWNpdHk9IjAuMDUiLz4KPC9zdmc+')] opacity-30"></div>
+            <div class="z-10">${data.logo}</div>
+          </div>
+          <div class="p-5 sm:p-6">
+            <h3 class="text-3xl font-black text-white mb-6">${brandName}</h3>
+            
+            <div class="space-y-5">
+              <div>
+                <h4 class="text-cyan-400 font-bold text-sm mb-2 flex items-center gap-2">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>
+                  品牌創立故事
+                </h4>
+                <p class="text-[13px] text-slate-300 leading-relaxed">${data.story}</p>
+              </div>
+              <div>
+                <h4 class="text-purple-400 font-bold text-sm mb-2 flex items-center gap-2">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+                  品牌商業策略
+                </h4>
+                <p class="text-[13px] text-slate-300 leading-relaxed">${data.strategy}</p>
+              </div>
+              <div class="bg-slate-900/50 p-4 rounded-xl border border-white/5">
+                <h4 class="text-green-400 font-bold text-sm mb-2 flex items-center gap-2">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+                  市場與財報概況
+                </h4>
+                <p class="text-[13px] text-slate-300 leading-relaxed">${data.finance}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+      showScreen(screens.brandDetail);
+    }
+
+    // ================= 初始化：產生靜態大廳資料 =================
+    function renderKnowledgeBase() {
+      // 產生 6 大球星列表
+      const targetStars = ["LeBron James", "Kevin Durant", "Stephen Curry", "James Harden", "Russell Westbrook", "Paul George"];
+      const sixStars = playersData.filter(p => targetStars.includes(p.name)).sort((a, b) => b.years - a.years);
+      
+      const starsListEl = document.getElementById('stars-list');
+      starsListEl.innerHTML = sixStars.map((player, idx) => `
+        <button onclick="showStarDetail('${player.name}')" class="glass-button w-full p-4 rounded-2xl flex items-center gap-4 text-left group">
+          <div class="w-12 h-12 rounded-full bg-slate-800 text-2xl flex items-center justify-center shrink-0 border border-white/10 group-hover:scale-110 transition-transform">
+            ${starsDetailedData[player.name].emoji}
+          </div>
+          <div class="flex-1">
+            <h4 class="font-bold text-white text-base group-hover:text-yellow-400 transition-colors">${player.name}</h4>
+            <p class="text-xs text-slate-400 mt-1">
+              <span class="${player.team === '費城76人' ? 'text-blue-400 font-bold' : (player.team === '丹佛金塊' ? 'text-orange-400 font-bold' : '')}">${player.team}</span> 
+              · ${player.brand}
+            </p>
+          </div>
+          <div class="text-slate-500 group-hover:text-white transition-colors">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 18 6-6-6-6"/></svg>
+          </div>
+        </button>
+      `).join('');
+
+      // 產生 3 大品牌列表
+      const brandKeys = ["Nike", "Adidas", "Jordan"];
+      const brandsListEl = document.getElementById('brands-list');
+      brandsListEl.innerHTML = brandKeys.map((bName, idx) => `
+        <button onclick="showBrandDetail('${bName}')" class="glass-button w-full p-5 rounded-3xl relative overflow-hidden text-left group">
+          <div class="absolute right-0 top-0 w-24 h-24 bg-cyan-500/5 rounded-full blur-xl group-hover:bg-cyan-500/20 transition-colors"></div>
+          <div class="flex justify-between items-center mb-2 relative z-10">
+            <h4 class="text-2xl font-black text-white flex items-center gap-2 group-hover:text-cyan-400 transition-colors">
+              <span class="text-cyan-400/50">#${idx + 1}</span> ${bName}
+            </h4>
+            <div class="text-slate-500 group-hover:text-cyan-400 transition-colors">
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 18 6-6-6-6"/></svg>
+            </div>
+          </div>
+          <p class="text-[13px] text-slate-400 leading-relaxed relative z-10 line-clamp-2">
+            ${brandsDetailedData[bName].story}
+          </p>
+        </button>
+      `).join('');
+    }
+
+    // ================= 遊戲核心邏輯 =================
+    const TOTAL_TIME = 60;
+    let score = 0;
+    let timeLeft = TOTAL_TIME;
+    let timerInterval = null;
+    let currentCorrectAnswer = "";
+    let isAnswering = false;
+    let combo = 0;
+    let maxCombo = 0;
+    const baseScore = 10;
+
+    // 音樂控制變數
+    // 快樂音樂 (大廳)
+    const audioHappy = new Audio('https://s3-us-west-2.amazonaws.com/s.cdpn.io/858/outfoxing.mp3');
+    audioHappy.loop = true;
+    audioHappy.volume = 0.5; // 大廳音樂稍微調低音量
+
+    const audioTense = new Audio('https://labs.phaser.io/assets/audio/bodenstaendig_2000_in_rock_4bit.mp3');
+    audioTense.loop = true;
+    audioTense.volume = 0.3; // 遊戲緊張音樂
+
+    let isMusicPlaying = false;
+    let currentMusic = 'happy';
+
+    // Web Audio API 音效引擎 (無須外部檔案)
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+    function playSFX(type) {
+      if (!isMusicPlaying) return; // 沒開音樂就不播音效
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+
+      const osc = audioCtx.createOscillator();
+      const gainNode = audioCtx.createGain();
+
+      osc.connect(gainNode);
+      gainNode.connect(audioCtx.destination);
+
+      const now = audioCtx.currentTime;
+
+      if (type === 'correct') {
+        // 答對音效：清脆雙音叮咚聲
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(659.25, now); // E5
+        osc.frequency.setValueAtTime(880, now + 0.1); // A5
+        gainNode.gain.setValueAtTime(0.5, now);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
+        osc.start(now);
+        osc.stop(now + 0.3);
+      } else {
+        // 答錯音效：低沉嗶聲
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(150, now);
+        osc.frequency.linearRampToValueAtTime(100, now + 0.3);
+        gainNode.gain.setValueAtTime(0.3, now);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
+        osc.start(now);
+        osc.stop(now + 0.3);
+      }
+    }
+
+    const progressBarContainer = document.getElementById('progress-bar-container');
+    const progressBar = document.getElementById('progress-bar');
+    const headerCombo = document.getElementById('header-combo');
+    const comboText = document.getElementById('combo-text');
+    const scoreEl = document.getElementById('score');
+    const floatingScore = document.getElementById('floating-score');
+    const finalScoreEl = document.getElementById('final-score');
+    const finalMaxComboEl = document.getElementById('final-max-combo');
+    const questionTextEl = document.getElementById('question-text');
+    const questionTagEl = document.getElementById('question-tag');
+    const questionTypeIndicator = document.getElementById('question-type-indicator');
+    const optionsContainer = document.getElementById('options-container');
+
+    function shuffleArray(array) { return [...array].sort(() => Math.random() - 0.5); }
+
+    function startGame() {
+      score = 0;
+      timeLeft = TOTAL_TIME;
+      combo = 0;
+      maxCombo = 0;
+      
+      scoreEl.innerText = `$0`;
+      updateComboUI();
+      headerCombo.classList.remove('hidden');
+      progressBarContainer.classList.remove('hidden');
+      progressBar.style.width = '100%';
+      
+      switchMusic('tense');
+      showScreen(screens.playing);
+      generateQuestion();
+
+      if (timerInterval) clearInterval(timerInterval);
+      
+      timerInterval = setInterval(() => {
+        timeLeft -= 0.1;
+        const percentage = Math.max(0, (timeLeft / TOTAL_TIME) * 100);
+        progressBar.style.width = `${percentage}%`;
+        
+        if (percentage < 20) {
+          progressBar.classList.remove('from-orange-500', 'to-yellow-400');
+          progressBar.classList.add('from-red-600', 'to-red-400');
+        } else {
+          progressBar.classList.add('from-orange-500', 'to-yellow-400');
+          progressBar.classList.remove('from-red-600', 'to-red-400');
+        }
+
+        if (timeLeft <= 0) endGame();
+      }, 100);
+    }
+
+    function generateNumberOptions(correctNum, count) {
+      const options = new Set([correctNum]);
+      while (options.size < count) {
+        const diff = Math.floor(Math.random() * 5) - 2;
+        let fake = correctNum + diff;
+        if (fake <= 0) fake = correctNum + Math.floor(Math.random() * 3) + 1;
+        options.add(fake);
+      }
+      return shuffleArray(Array.from(options));
+    }
+
+    // 76人迷專屬彩蛋格式化函數
+    function formatEasterEgg(text) {
+      if (typeof text !== 'string') return text;
+      return text.replace(/(費城76人|Paul George|Joel Embiid)/g, '<span class="text-blue-400 font-black">$1</span>');
+    }
+
+    function generateQuestion() {
+      isAnswering = false;
+      optionsContainer.innerHTML = ''; 
+      
+      const randomPlayer = playersData[Math.floor(Math.random() * playersData.length)];
+      let types = ['brand', 'shoe', 'team', 'years', 'shoesCount'];
+      if (randomPlayer.stock) types.push('stock');
+
+      const type = types[Math.floor(Math.random() * types.length)];
+      let questionText = "", tagText = "", tagColor = "";
+      let options = [];
+
+      switch (type) {
+        case 'brand':
+          tagText = "市場調研"; tagColor = "from-blue-500 to-cyan-400";
+          questionText = `「${randomPlayer.name}」目前的代言品牌是？`;
+          currentCorrectAnswer = randomPlayer.brand;
+          const allBrands = [...new Set(playersData.map(p => p.brand))];
+          options = [currentCorrectAnswer, ...shuffleArray(allBrands.filter(b => b !== currentCorrectAnswer)).slice(0, 3)];
+          break;
+        case 'shoe':
+          tagText = "新品發表"; tagColor = "from-purple-500 to-pink-500";
+          questionText = `簽名鞋「${randomPlayer.shoe}」的主人是？`;
+          currentCorrectAnswer = randomPlayer.name;
+          options = [currentCorrectAnswer, ...shuffleArray(playersData.map(p => p.name).filter(n => n !== currentCorrectAnswer)).slice(0, 3)];
+          break;
+        case 'team':
+          tagText = "球隊建軍"; tagColor = "from-emerald-500 to-green-400";
+          questionText = `「${randomPlayer.name}」目前效力於哪支球隊？`;
+          currentCorrectAnswer = randomPlayer.team;
+          const allTeams = [...new Set(playersData.map(p => p.team))];
+          options = [currentCorrectAnswer, ...shuffleArray(allTeams.filter(t => t !== currentCorrectAnswer)).slice(0, 3)];
+          break;
+        case 'years':
+          tagText = "資歷考核"; tagColor = "from-slate-400 to-slate-500";
+          questionText = `「${randomPlayer.name}」在 NBA 征戰了幾年？`;
+          currentCorrectAnswer = `${randomPlayer.years} 年`;
+          options = generateNumberOptions(randomPlayer.years, 4).map(n => `${n} 年`);
+          break;
+        case 'shoesCount':
+          tagText = "歷史定位"; tagColor = "from-yellow-500 to-orange-400";
+          questionText = `「${randomPlayer.name}」生涯共出過幾雙專屬鞋？`;
+          currentCorrectAnswer = `${randomPlayer.shoesCount} 雙`;
+          options = generateNumberOptions(randomPlayer.shoesCount, 4).map(n => `${n} 雙`);
+          break;
+        case 'stock':
+          tagText = "理財思維 (高分題)"; tagColor = "from-red-500 to-rose-400";
+          questionText = `「${randomPlayer.name}」代言的品牌，其母公司美股代號為？`;
+          currentCorrectAnswer = randomPlayer.stock;
+          const allStocks = [...new Set(playersData.filter(p=>p.stock).map(p => p.stock))];
+          const fakeStocks = ['NKE', 'ADDYY', 'ANPDY', 'PUMSY', 'SKX'];
+          const stockPool = [...new Set([...allStocks, ...fakeStocks])];
+          options = [currentCorrectAnswer, ...shuffleArray(stockPool.filter(s => s !== currentCorrectAnswer)).slice(0, 3)];
+          break;
+      }
+
+      // 如果選項不足 4 個，確保不會壞掉
+      while(options.length < 4) { options.push("其他"); }
+      
+      questionTagEl.innerText = tagText;
+      questionTypeIndicator.className = `absolute top-0 left-0 w-full h-1 bg-gradient-to-r ${tagColor}`;
+      // 套用彩蛋：更改題目標題
+      questionTextEl.innerHTML = formatEasterEgg(questionText);
+      options = shuffleArray(options.slice(0, 4));
+
+      options.forEach((opt, index) => {
+        const btn = document.createElement('button');
+        // 動態生成的選項按鈕一樣微調 padding 大小 (p-3 sm:p-4)
+        btn.className = `w-full p-3 sm:p-4 rounded-xl sm:rounded-2xl border border-white/10 text-left font-bold transition-all duration-200 glass-card hover:bg-white/10 text-slate-200 flex justify-between items-center group animate-pop-in shrink-0`;
+        btn.style.animationDelay = `${index * 50}ms`;
+        // 套用彩蛋：更改選項內容
+        btn.innerHTML = `
+          <span>${formatEasterEgg(opt)}</span>
+          <div class="w-6 h-6 rounded-full border-2 border-slate-600 group-hover:border-white transition-colors flex items-center justify-center shrink-0"></div>
+        `;
+        btn.onclick = () => handleAnswer(opt, btn, type === 'stock');
+        optionsContainer.appendChild(btn);
+      });
+    }
+
+    function updateComboUI() {
+      if (combo >= 2) {
+        comboText.innerText = `${combo} 連擊!`;
+        headerCombo.classList.add('combo-fire');
+        headerCombo.classList.remove('text-slate-500');
+      } else {
+        comboText.innerText = `Combo`;
+        headerCombo.classList.remove('combo-fire');
+        headerCombo.classList.add('text-slate-500');
+      }
+    }
+
+    function handleAnswer(selectedOpt, btnElement, isHardMode) {
+      if (isAnswering) return;
+      isAnswering = true;
+
+      const allButtons = optionsContainer.querySelectorAll('button');
+      const iconDiv = btnElement.querySelector('div');
+
+      if (selectedOpt === currentCorrectAnswer) {
+        playSFX('correct'); // 播放答對音效
+        combo++;
+        if (combo > maxCombo) maxCombo = combo;
+        updateComboUI();
+
+        let multiplier = 1 + (combo > 2 ? (combo - 2) * 0.5 : 0);
+        let earned = Math.floor((isHardMode ? baseScore * 2 : baseScore) * multiplier);
+        score += earned;
+        
+        scoreEl.innerText = `$${score.toLocaleString()} 萬`;
+        
+        floatingScore.innerText = `+$${earned}萬`;
+        floatingScore.style.opacity = '1';
+        floatingScore.style.transform = 'translateY(-10px)';
+        setTimeout(() => {
+          floatingScore.style.opacity = '0';
+          floatingScore.style.transform = 'translateY(0)';
+        }, 800);
+
+        btnElement.classList.remove('border-white/10', 'hover:bg-white/10');
+        btnElement.classList.add('bg-gradient-to-r', 'from-emerald-600', 'to-green-500', 'border-transparent', 'text-white', 'scale-105', 'z-10');
+        iconDiv.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" class="text-white"><polyline points="20 6 9 17 4 12"/></svg>`;
+        iconDiv.classList.replace('border-slate-600', 'border-transparent');
+
+      } else {
+        playSFX('wrong'); // 播放答錯音效
+        combo = 0;
+        updateComboUI();
+        
+        timeLeft = Math.max(0, timeLeft - 3);
+        document.getElementById('game-container').classList.add('animate-shake');
+        progressBar.classList.add('bg-white');
+        setTimeout(() => {
+          document.getElementById('game-container').classList.remove('animate-shake');
+          progressBar.classList.remove('bg-white');
+        }, 400);
+
+        btnElement.classList.remove('border-white/10');
+        btnElement.classList.add('bg-red-900/60', 'border-red-500', 'text-slate-300');
+        iconDiv.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" class="text-red-400"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>`;
+        iconDiv.classList.replace('border-slate-600', 'border-transparent');
+        
+        allButtons.forEach(b => {
+          // 用 textContent，確保比對時不會被 76 人專屬的 HTML 標籤干擾
+          const spanText = b.querySelector('span').textContent;
+          if (spanText === String(currentCorrectAnswer)) {
+            b.classList.remove('border-white/10');
+            b.classList.add('bg-emerald-900/40', 'border-emerald-500/50', 'text-emerald-100');
+          } else if (b !== btnElement) {
+            b.classList.add('opacity-30');
+          }
+        });
+      }
+
+      setTimeout(generateQuestion, selectedOpt === currentCorrectAnswer ? 600 : 1200);
+    }
+
+    function endGame() {
+      clearInterval(timerInterval);
+      progressBarContainer.classList.add('hidden');
+      headerCombo.classList.add('hidden');
+      
+      finalScoreEl.innerText = `$${score.toLocaleString()} 萬`;
+      finalMaxComboEl.innerText = maxCombo;
+      switchMusic('happy');
+      showScreen(screens.gameover);
+    }
+
+    // ================= 音樂控制邏輯 =================
+    function toggleMusic() {
+      isMusicPlaying = !isMusicPlaying;
+      const btn = document.getElementById('music-toggle');
+      if (isMusicPlaying) {
+        btn.innerHTML = `<svg id="icon-music-on" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-green-400"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>`;
+        playCurrentMusic();
+      } else {
+        btn.innerHTML = `<svg id="icon-music-off" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg>`;
+        audioHappy.pause();
+        audioTense.pause();
+      }
+    }
+
+    function switchMusic(type) {
+      currentMusic = type;
+      if (isMusicPlaying) {
+        playCurrentMusic();
+      }
+    }
+
+    function playCurrentMusic() {
+      if (currentMusic === 'happy') {
+        audioTense.pause();
+        audioTense.currentTime = 0; // 重置緊張音樂
+        audioHappy.play().catch(e => console.log("音訊播放被瀏覽器阻擋", e));
+      } else if (currentMusic === 'tense') {
+        audioHappy.pause();
+        audioTense.play().catch(e => console.log("音訊播放被瀏覽器阻擋", e));
+      }
+    }
+
+    // 啟動應用程式
+    renderKnowledgeBase();
+    showHome();
+  </script>
+</body>
+</html>
